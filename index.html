@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FATRAS - Basement</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #0B1026;
+            color: #fff;
+            font-family: 'Inter', Arial, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        /* ===== BAT CURSOR ===== */
+        #batCursor {
+            position: fixed;
+            width: 72px; height: 42px;
+            pointer-events: none;
+            z-index: 99999;
+            background-image: url("assets/cursor_sprite.png");
+            background-size: auto 100%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        #batCursor.visible { opacity: 1; }
+
+        /* ===== SUBTLE GLOW ===== */
+        #spotlight {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9998;
+            width: 120px; height: 120px;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,230,120,0.06) 0%, rgba(255,220,80,0.02) 40%, transparent 70%);
+            mix-blend-mode: screen;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        #spotlight.active { opacity: 1; }
+
+        /* ===== BAT VIDEOS ===== */
+        .bat-video-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            object-fit: cover;
+            pointer-events: none;
+            z-index: 9000;
+            mix-blend-mode: multiply;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        .bat-video-overlay.show { opacity: 1; }
+        .bat-video-overlay.fade-out { opacity: 0; transition: opacity 1.2s; }
+
+        /* ===== HEADER ===== */
+        header {
+            width: 100%;
+            padding: 28px 40px;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            position: relative;
+            z-index: 100;
+        }
+        .logo-link { display: inline-block; cursor: none; }
+        .logo-link img {
+            height: 100px; width: auto;
+            filter: drop-shadow(0 0 16px rgba(255,213,79,0.35));
+            transition: filter 0.3s, transform 0.3s;
+        }
+        .logo-link:hover img {
+            filter: drop-shadow(0 0 28px rgba(255,213,79,0.7));
+            transform: scale(1.05);
+        }
+
+        /* ===== FATRASCOIN COUNTER ===== */
+        #coinCounter {
+            position: fixed;
+            top: 28px; right: 40px;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,213,79,0.08);
+            border: 1px solid rgba(255,213,79,0.2);
+            border-radius: 50px;
+            padding: 8px 18px 8px 12px;
+        }
+        .coin-icon {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FFD54F 0%, #F9A825 100%);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 12px rgba(255,213,79,0.4);
+            padding: 3px;
+            overflow: hidden;
+        }
+        .coin-icon img {
+            width: 100%; height: 100%;
+            object-fit: contain;
+            filter: brightness(0);
+        }
+        .coin-count {
+            font-size: 18px; font-weight: 600; color: #FFD54F;
+            min-width: 20px;
+        }
+        .coin-label {
+            font-size: 11px; color: rgba(255,213,79,0.5);
+            letter-spacing: 1px; text-transform: uppercase;
+        }
+
+        @keyframes coinPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.4); }
+            100% { transform: scale(1); }
+        }
+        .coin-pop .coin-icon { animation: coinPop 0.4s ease; }
+
+        /* ===== MAIN CONTENT ===== */
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 20px 80px;
+            max-width: 620px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 100;
+        }
+
+        /* ===== COVER ===== */
+        .cover {
+            width: 320px; height: 320px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 36px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .cover img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* ===== QUIZ AREA ===== */
+        #quizArea {
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+        }
+
+        .quiz-progress {
+            font-size: 12px; letter-spacing: 2px;
+            color: rgba(255,255,255,0.3);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .quiz-track-name {
+            font-size: 13px; font-weight: 400;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 20px;
+        }
+        .quiz-track-name span { color: #FFD54F; }
+
+        /* Audio play button */
+        .quiz-play-btn {
+            width: 64px; height: 64px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,213,79,0.3);
+            background: rgba(255,213,79,0.06);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 28px;
+            cursor: none;
+            transition: all 0.3s;
+        }
+        .quiz-play-btn:hover {
+            border-color: #FFD54F;
+            background: rgba(255,213,79,0.12);
+            box-shadow: 0 0 24px rgba(255,213,79,0.2);
+        }
+        .quiz-play-btn svg { width: 24px; height: 24px; fill: #FFD54F; }
+        .quiz-play-btn.playing { border-color: #FFD54F; background: rgba(255,213,79,0.15); }
+
+        /* Audio progress bar */
+        .audio-bar {
+            width: 80%; max-width: 300px;
+            height: 3px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 2px;
+            margin: 0 auto 32px;
+            overflow: hidden;
+        }
+        .audio-bar-fill {
+            height: 100%;
+            background: #FFD54F;
+            width: 0%;
+            border-radius: 2px;
+            transition: width 0.1s linear;
+        }
+
+        /* Lyrics display */
+        .lyrics-display {
+            font-size: 20px;
+            font-weight: 500;
+            line-height: 1.6;
+            margin-bottom: 28px;
+            min-height: 60px;
+            color: rgba(255,255,255,0.9);
+        }
+        .lyrics-blank {
+            display: inline-block;
+            min-width: 120px;
+            border-bottom: 3px solid #FFD54F;
+            color: transparent;
+            margin: 0 4px;
+            position: relative;
+        }
+        .lyrics-blank::after {
+            content: "???";
+            color: rgba(255,213,79,0.4);
+            position: absolute;
+            left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+        }
+
+        /* Answer choices */
+        .choices {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+        .choice-btn {
+            padding: 14px 16px;
+            border-radius: 8px;
+            border: 1.5px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.03);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 400;
+            cursor: none;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .choice-btn:hover {
+            border-color: rgba(255,213,79,0.4);
+            background: rgba(255,213,79,0.06);
+        }
+        .choice-btn.correct {
+            border-color: #4CAF50;
+            background: rgba(76,175,80,0.15);
+            color: #4CAF50;
+        }
+        .choice-btn.wrong {
+            border-color: #f44336;
+            background: rgba(244,67,54,0.1);
+            color: #f44336;
+        }
+        .choice-btn.disabled { pointer-events: none; opacity: 0.5; }
+
+        /* Feedback */
+        .feedback {
+            font-size: 16px; font-weight: 500;
+            min-height: 30px;
+            margin-bottom: 16px;
+        }
+        .feedback.good { color: #4CAF50; }
+        .feedback.bad { color: #f44336; }
+
+        /* Next button */
+        .next-btn {
+            padding: 12px 32px;
+            border-radius: 50px;
+            border: none;
+            background: linear-gradient(135deg, #FFD54F 0%, #F9A825 100%);
+            color: #0B1026;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: none;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.2s;
+        }
+        .next-btn.show { opacity: 1; }
+        .next-btn:hover { transform: scale(1.05); }
+
+        /* ===== WIN SCREEN ===== */
+        #winScreen {
+            display: none;
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: #0B1026;
+            z-index: 30000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            cursor: none;
+            padding: 40px;
+        }
+        #winScreen.show { display: flex; }
+
+        .win-coins {
+            display: flex; gap: 12px;
+            margin-bottom: 30px;
+        }
+        .win-coin {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FFD54F 0%, #F9A825 100%);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 20px rgba(255,213,79,0.5);
+            animation: winCoinBounce 0.6s ease backwards;
+            padding: 6px;
+            overflow: hidden;
+        }
+        .win-coin img {
+            width: 100%; height: 100%;
+            object-fit: contain;
+            filter: brightness(0);
+        }
+        .win-coin:nth-child(1) { animation-delay: 0s; }
+        .win-coin:nth-child(2) { animation-delay: 0.15s; }
+        .win-coin:nth-child(3) { animation-delay: 0.3s; }
+        .win-coin:nth-child(4) { animation-delay: 0.45s; }
+        .win-coin:nth-child(5) { animation-delay: 0.6s; }
+
+        @keyframes winCoinBounce {
+            0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+            60% { transform: scale(1.2) rotate(10deg); }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+
+        .win-title {
+            font-size: 36px; font-weight: 700;
+            color: #FFD54F;
+            margin-bottom: 12px;
+            text-shadow: 0 0 30px rgba(255,213,79,0.4);
+        }
+        .win-subtitle {
+            font-size: 16px;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+        .win-spotify-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 32px;
+            border-radius: 50px;
+            background: #1DB954;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .win-spotify-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 24px rgba(29,185,84,0.4);
+        }
+        .win-spotify-btn svg { width: 22px; height: 22px; fill: #fff; }
+
+        .win-replay {
+            margin-top: 20px;
+            padding: 10px 24px;
+            border-radius: 50px;
+            border: 1.5px solid rgba(255,255,255,0.15);
+            background: transparent;
+            color: rgba(255,255,255,0.5);
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            cursor: none;
+            transition: all 0.2s;
+        }
+        .win-replay:hover {
+            border-color: rgba(255,255,255,0.4);
+            color: #fff;
+        }
+
+        /* ===== INTRO ===== */
+        #introOverlay {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: #0B1026;
+            z-index: 20000;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column;
+            transition: opacity 1s;
+            cursor: none;
+        }
+        #introOverlay.fade { opacity: 0; pointer-events: none; }
+        #introLogo {
+            height: 120px; width: auto;
+            filter: drop-shadow(0 0 20px rgba(255,213,79,0.4));
+            animation: logoPulse 2s ease-in-out infinite;
+        }
+        @keyframes logoPulse {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(255,213,79,0.3)); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 30px rgba(255,213,79,0.6)); transform: scale(1.03); }
+        }
+        #introText {
+            margin-top: 20px; font-size: 13px;
+            letter-spacing: 4px; text-transform: uppercase;
+            color: rgba(255,255,255,0.3);
+            animation: textFade 1.5s ease-in-out infinite;
+        }
+        @keyframes textFade { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.7; } }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px 30px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.12);
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 480px) {
+            header { padding: 16px 20px; }
+            .logo-link img { height: 70px; }
+            .cover { width: 260px; height: 260px; }
+            .lyrics-display { font-size: 17px; }
+            .choices { grid-template-columns: 1fr; }
+            #coinCounter { top: 16px; right: 16px; padding: 6px 14px 6px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- INTRO -->
+    <div id="introOverlay">
+        <img id="introLogo" src="assets/logo.png" alt="Fatras">
+        <div id="introText">Jouer</div>
+    </div>
+
+    <!-- CURSOR + SPOTLIGHT -->
+    <div id="batCursor"></div>
+    <div id="spotlight"></div>
+
+    <!-- BAT VIDEOS -->
+    <video id="batsV1" class="bat-video-overlay" muted playsinline preload="auto"><source src="assets/bats1.mp4" type="video/mp4"></video>
+    <video id="batsV2" class="bat-video-overlay" muted playsinline preload="auto"><source src="assets/bats2.mp4" type="video/mp4"></video>
+    <video id="batsV3" class="bat-video-overlay" muted playsinline preload="auto"><source src="assets/bats3.mp4" type="video/mp4"></video>
+    <video id="batsV4" class="bat-video-overlay" muted playsinline preload="auto"><source src="assets/bats4.mp4" type="video/mp4"></video>
+    <video id="batsV5" class="bat-video-overlay" muted playsinline preload="auto"><source src="assets/bats5.mp4" type="video/mp4"></video>
+    <video id="batsV6" class="bat-video-overlay" muted playsinline preload="auto"><source src="assets/bats6.mp4" type="video/mp4"></video>
+
+    <!-- COIN COUNTER -->
+    <div id="coinCounter">
+        <div class="coin-icon"><img src="assets/fatrascoin.png" alt="FC"></div>
+        <span class="coin-count" id="coinCount">0</span>
+        <span class="coin-label">/ 5</span>
+    </div>
+
+    <!-- HEADER -->
+    <header>
+        <a class="logo-link" href="https://open.spotify.com/intl-fr/artist/5axdapUVsbVkJVGVjybfQT?si=eEgBcciuRaOqfWdEkAbFMA" target="_blank" rel="noopener">
+            <img src="assets/logo.png" alt="Fatras - Spotify">
+        </a>
+    </header>
+
+    <main>
+        <div class="cover">
+            <img src="assets/cover.jpg" alt="Fatras Basement">
+        </div>
+
+        <div id="quizArea">
+            <div class="quiz-progress" id="quizProgress">Question 1 / 7</div>
+            <div class="quiz-track-name" id="quizTrackName">Extrait de <span id="trackNameSpan">—</span></div>
+
+            <button class="quiz-play-btn" id="quizPlayBtn" onclick="playQuizAudio()">
+                <svg viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg>
+            </button>
+
+            <div class="audio-bar">
+                <div class="audio-bar-fill" id="audioBarFill"></div>
+            </div>
+
+            <div class="lyrics-display" id="lyricsDisplay"></div>
+
+            <div class="choices" id="choicesContainer"></div>
+
+            <div class="feedback" id="feedback"></div>
+
+            <button class="next-btn" id="nextBtn" onclick="nextQuestion()">Question suivante</button>
+        </div>
+    </main>
+
+    <footer>FATRAS &copy; 2026</footer>
+
+    <!-- WIN SCREEN -->
+    <div id="winScreen">
+        <div class="win-coins">
+            <div class="win-coin"><img src="assets/fatrascoin.png" alt="FC"></div>
+            <div class="win-coin"><img src="assets/fatrascoin.png" alt="FC"></div>
+            <div class="win-coin"><img src="assets/fatrascoin.png" alt="FC"></div>
+            <div class="win-coin"><img src="assets/fatrascoin.png" alt="FC"></div>
+            <div class="win-coin"><img src="assets/fatrascoin.png" alt="FC"></div>
+        </div>
+        <div class="win-title">FATRAS MASTER</div>
+        <div class="win-subtitle">
+            Tu as gagn&eacute; 5 FatrasCoins !<br>
+            Tu connais la Basement sur le bout des doigts.
+        </div>
+        <a class="win-spotify-btn" href="https://open.spotify.com/intl-fr/artist/5axdapUVsbVkJVGVjybfQT?si=eEgBcciuRaOqfWdEkAbFMA" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+            &Eacute;couter sur Spotify
+        </a>
+        <button class="win-replay" onclick="resetGame()">Rejouer</button>
+    </div>
+
+    <script>
+    // ===== QUIZ DATA =====
+    const quizQuestions = [
+        {
+            track: "Bouteille à la mer",
+            artists: "Tydi S x Jeanne",
+            audio: "assets/quiz1.mp3",
+            lyricsBefore: "J'envoie mes mots dans",
+            blank: "l'océan",
+            lyricsAfter: "en espérant qu'ils reviennent",
+            choices: ["l'océan", "le vent", "la nuit", "le temps"]
+        },
+        {
+            track: "Sucer mon arme",
+            artists: "Lowkey x Ruccie x Luvbfk",
+            audio: "assets/quiz2.mp3",
+            lyricsBefore: "Dans le noir j'avance,",
+            blank: "pas de recul",
+            lyricsAfter: "j'ai plus rien à perdre",
+            choices: ["sans regret", "pas de recul", "dans le flou", "comme un fou"]
+        },
+        {
+            track: "Erasmus",
+            artists: "Yzaa x Nuev",
+            audio: "assets/quiz3.mp3",
+            lyricsBefore: "On décolle ce soir, direction",
+            blank: "l'inconnu",
+            lyricsAfter: "les valises sont prêtes",
+            choices: ["l'aéroport", "le sud", "l'inconnu", "demain"]
+        },
+        {
+            track: "Jump",
+            artists: "Nymes x Tydi S x Mailow",
+            audio: "assets/quiz4.mp3",
+            lyricsBefore: "On saute dans le vide,",
+            blank: "pas le choix",
+            lyricsAfter: "la vie attend pas",
+            choices: ["c'est la loi", "pas le choix", "avec toi", "une seule fois"]
+        },
+        {
+            track: "Will Smith",
+            artists: "Xobo x Asra",
+            audio: "assets/quiz5.mp3",
+            lyricsBefore: "Fresh prince dans la place,",
+            blank: "tout le monde sait",
+            lyricsAfter: "on règne sur le block",
+            choices: ["personne sait", "tout le monde sait", "c'est un fait", "laisse tomber"]
+        },
+        {
+            track: "Alep",
+            artists: "Lekmance",
+            audio: "assets/quiz7.mp3",
+            lyricsBefore: "Les rues parlent de nous,",
+            blank: "sous les étoiles",
+            lyricsAfter: "on marche sans se retourner",
+            choices: ["dans le noir", "sous les étoiles", "jusqu'au bout", "dans le sale"]
+        },
+        {
+            track: "Tatoo",
+            artists: "BabyStrunch",
+            audio: "assets/quiz8.mp3",
+            lyricsBefore: "Gravé dans ma peau,",
+            blank: "comme un souvenir",
+            lyricsAfter: "qui ne s'efface jamais",
+            choices: ["pour la vie", "comme un souvenir", "c'est mon délire", "sans mentir"]
+        }
+    ];
+
+    // Shuffle questions
+    function shuffle(arr) {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+    }
+
+    let questions = shuffle(quizQuestions);
+    let currentQ = 0;
+    let coins = 0;
+    let quizAudio = null;
+    let audioInterval = null;
+    let answered = false;
+
+    function loadQuestion() {
+        const q = questions[currentQ];
+        answered = false;
+
+        document.getElementById("quizProgress").textContent = `Question ${currentQ + 1} / ${questions.length}`;
+        document.getElementById("trackNameSpan").textContent = `${q.track} — ${q.artists}`;
+        document.getElementById("lyricsDisplay").innerHTML =
+            `"${q.lyricsBefore} <span class="lyrics-blank">${q.blank}</span> ${q.lyricsAfter}"`;
+
+        // Shuffle choices
+        const shuffled = shuffle(q.choices);
+        const container = document.getElementById("choicesContainer");
+        container.innerHTML = "";
+        shuffled.forEach(c => {
+            const btn = document.createElement("button");
+            btn.className = "choice-btn";
+            btn.textContent = c;
+            btn.onclick = () => selectAnswer(btn, c, q.blank);
+            container.appendChild(btn);
+        });
+
+        document.getElementById("feedback").textContent = "";
+        document.getElementById("feedback").className = "feedback";
+        document.getElementById("nextBtn").classList.remove("show");
+        document.getElementById("audioBarFill").style.width = "0%";
+
+        const playBtn = document.getElementById("quizPlayBtn");
+        playBtn.classList.remove("playing");
+        playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg>';
+
+        if (quizAudio) { quizAudio.pause(); quizAudio = null; }
+        clearInterval(audioInterval);
+    }
+
+    function playQuizAudio() {
+        const q = questions[currentQ];
+        const playBtn = document.getElementById("quizPlayBtn");
+
+        if (quizAudio && !quizAudio.paused) {
+            quizAudio.pause();
+            playBtn.classList.remove("playing");
+            playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg>';
+            clearInterval(audioInterval);
+            return;
+        }
+
+        quizAudio = new Audio(q.audio);
+        quizAudio.play();
+        playBtn.classList.add("playing");
+        playBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="5" y="3" width="4" height="18"/><rect x="15" y="3" width="4" height="18"/></svg>';
+
+        audioInterval = setInterval(() => {
+            if (!quizAudio || !quizAudio.duration) return;
+            const pct = (quizAudio.currentTime / quizAudio.duration) * 100;
+            document.getElementById("audioBarFill").style.width = pct + "%";
+        }, 80);
+
+        quizAudio.onended = () => {
+            playBtn.classList.remove("playing");
+            playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg>';
+            document.getElementById("audioBarFill").style.width = "100%";
+            clearInterval(audioInterval);
+        };
+    }
+
+    function selectAnswer(btn, selected, correct) {
+        if (answered) return;
+        answered = true;
+
+        // Disable all
+        document.querySelectorAll(".choice-btn").forEach(b => b.classList.add("disabled"));
+
+        if (selected === correct) {
+            btn.classList.add("correct");
+            coins++;
+            document.getElementById("coinCount").textContent = coins;
+            document.getElementById("coinCounter").classList.add("coin-pop");
+            setTimeout(() => document.getElementById("coinCounter").classList.remove("coin-pop"), 500);
+
+            document.getElementById("feedback").textContent = "+1 FatrasCoin !";
+            document.getElementById("feedback").className = "feedback good";
+
+            // Trigger bats on correct answer
+            playRandomBats();
+
+            // Reveal the blank
+            document.querySelector(".lyrics-blank").style.color = "#4CAF50";
+            document.querySelector(".lyrics-blank").style.borderColor = "#4CAF50";
+            if (document.querySelector(".lyrics-blank::after")) {
+                document.querySelector(".lyrics-blank").classList.add("revealed");
+            }
+
+            // Check win
+            if (coins >= 5) {
+                setTimeout(() => showWinScreen(), 1500);
+                return;
+            }
+        } else {
+            btn.classList.add("wrong");
+            // Highlight correct
+            document.querySelectorAll(".choice-btn").forEach(b => {
+                if (b.textContent === correct) b.classList.add("correct");
+            });
+            document.getElementById("feedback").textContent = "Raté ! La réponse était : " + correct;
+            document.getElementById("feedback").className = "feedback bad";
+
+            document.querySelector(".lyrics-blank").style.color = "#f44336";
+            document.querySelector(".lyrics-blank").style.borderColor = "#f44336";
+        }
+
+        // Show next button (if not last or not won)
+        if (currentQ < questions.length - 1) {
+            document.getElementById("nextBtn").classList.add("show");
+        } else if (coins < 5) {
+            // All questions done but didn't reach 5 coins
+            document.getElementById("feedback").textContent += " — Pas assez de FatrasCoins ! Réessaye.";
+            setTimeout(() => {
+                questions = shuffle(quizQuestions);
+                currentQ = 0;
+                coins = 0;
+                document.getElementById("coinCount").textContent = "0";
+                loadQuestion();
+            }, 3000);
+        }
+    }
+
+    function nextQuestion() {
+        currentQ++;
+        loadQuestion();
+    }
+
+    function showWinScreen() {
+        document.getElementById("winScreen").classList.add("show");
+        // Play 2 bat videos for celebration
+        playBatVideo(batVideos[0]);
+        setTimeout(() => playBatVideo(batVideos[1]), 600);
+        setTimeout(() => playBatVideo(batVideos[2]), 1200);
+    }
+
+    function resetGame() {
+        document.getElementById("winScreen").classList.remove("show");
+        questions = shuffle(quizQuestions);
+        currentQ = 0;
+        coins = 0;
+        document.getElementById("coinCount").textContent = "0";
+        loadQuestion();
+    }
+
+    // ===== BAT VIDEOS =====
+    const batVideos = [
+        document.getElementById("batsV1"), document.getElementById("batsV2"),
+        document.getElementById("batsV3"), document.getElementById("batsV4"),
+        document.getElementById("batsV5"), document.getElementById("batsV6")
+    ];
+    let batIndex = 0, batCooldown = false;
+
+    // Bat sound effect
+    const batSfx = new Audio("assets/bats_sfx.mp3");
+    batSfx.volume = 0.5;
+
+    function playBatVideo(video) {
+        video.currentTime = 0;
+        video.classList.add("show");
+        video.play();
+        // Play bat sound
+        const sfx = batSfx.cloneNode();
+        sfx.volume = 0.4;
+        sfx.play().catch(() => {});
+        video.onended = () => {
+            video.classList.add("fade-out");
+            video.classList.remove("show");
+            setTimeout(() => video.classList.remove("fade-out"), 1200);
+        };
+    }
+
+    function playRandomBats() {
+        if (batCooldown) return;
+        batCooldown = true;
+        setTimeout(() => batCooldown = false, 3000);
+        playBatVideo(batVideos[batIndex % batVideos.length]);
+        batIndex++;
+    }
+
+    // ===== CURSOR =====
+    const batCursor = document.getElementById("batCursor");
+    const SPRITE_FRAMES = 12, FRAME_W = 72;
+    let cursorFrame = 0;
+    setInterval(() => {
+        cursorFrame = (cursorFrame + 1) % SPRITE_FRAMES;
+        batCursor.style.backgroundPositionX = -(cursorFrame * FRAME_W) + "px";
+    }, 83);
+
+    const spotlight = document.getElementById("spotlight");
+    document.addEventListener("mousemove", (e) => {
+        batCursor.style.left = e.clientX + "px";
+        batCursor.style.top = e.clientY + "px";
+        batCursor.classList.add("visible");
+        spotlight.style.left = e.clientX + "px";
+        spotlight.style.top = e.clientY + "px";
+        spotlight.classList.add("active");
+    });
+    document.addEventListener("mouseleave", () => {
+        batCursor.classList.remove("visible");
+        spotlight.classList.remove("active");
+    });
+
+    // ===== INTRO =====
+    document.getElementById("introOverlay").addEventListener("click", () => {
+        document.getElementById("introOverlay").classList.add("fade");
+        setTimeout(() => document.getElementById("introOverlay").style.display = "none", 1000);
+        playBatVideo(batVideos[0]);
+        setTimeout(() => playBatVideo(batVideos[1]), 800);
+    });
+
+    // ===== START =====
+    loadQuestion();
+    </script>
+</body>
+</html>
